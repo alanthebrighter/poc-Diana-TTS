@@ -1,93 +1,18 @@
-from logging import exception
 import subprocess
 import ollama
 import time
 import threading
 import queue
-import pyaudio, wave
+import pyaudio
+import wave
 from pynput import keyboard
 from faster_whisper import WhisperModel
-import os
+# import os
 
-model_size = "small"
-print(f"Loading model: {model_size}...")
-
-model = WhisperModel(model_size, device="cuda", compute_type="float16")
-
-audio_path = "./output.wav"
-
-if not os.path.exists(audio_path):
-    print(f"Audio '{audio_path}' not found.")
-else:
-    print("Diana is hearing...")
-
-    try:
-        start_time = time.time()
-        segments, info = model.transcribe(audio_path, beam_size=5, language="en")
-
-        print(
-            f"Detected language: '{info.language}', with probability {info.language_probability:.2f}."
-        )
-
-        full_text = ""
-        for segm in segments:
-            print(f"[{segm.start:.2f}s -> {segm.end:.2f}s] {segm.text}")
-            full_text += segm.text
-
-        print(f"Transcription took {time.time() - start_time:.2f}")
-    except Exception as e:
-        print(f"Error: Transcription failed {e}")
-
-    def on_press(key):
-        if key == keyboard.Key.caps_lock:
-            print("Caps Lock activated - Starting recording...")
-
-    def on_release(key):
-        if key == keyboard.Key.caps_lock:
-            print("Caps Lock deactivated - Stoping recording...")
-
-    with keyboard.Listener(on_press=on_press, on_release=on_release) as listerner:
-        listerner.join()
-
-
-"""
 CHUNK = 1024
 FORMAT = pyaudio.paInt16
 CHANNELS = 1
 RATE = 16000
-
-
-def record_audio():
-    p = pyaudio.PyAudio()
-    stream = p.open(
-        format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK
-    )
-
-    frames = []
-
-    print("Listening...")
-
-    controller = keyboard.Controller()
-
-    while True:
-        if not keyboard.Key.caps_lock in controller.pressed():
-            break
-"""
-
-
-def animationPrinter():
-    while True:
-        char = print_queue.get()
-
-        print(char, end="", flush=True)
-        # time.sleep(0.14)
-        time.sleep(0.04)
-
-        print_queue.task_done()
-
-
-print_queue = queue.Queue()
-threading.Thread(target=animationPrinter, daemon=True).start()
 
 volume_factor = "0.4"
 
@@ -128,6 +53,35 @@ sox_cmd = [
 ]
 aplay_cmd = ["aplay", "-r", "22050", "-f", "S16_LE", "-t", "raw", "-c", "1"]
 
+audio_path = "./output.wav"
+
+
+is_recording = False
+
+
+def on_press(key):
+    global is_recording
+    if key == keyboard.Key.caps_lock:
+        is_recording = True
+        print("\nDiana is listening...")
+
+
+def on_release(key):
+    global is_recording
+    if key == keyboard.Key.caps_lock:
+        is_recording = False
+        print("Diana is thinking...")
+
+
+listerner = keyboard.Listener(on_press=on_press, on_release=on_release)
+listerner.start()
+
+p = pyaudio.PyAudio()
+
+model_size = "small"
+print(f"Loading model: {model_size}...")
+model = WhisperModel(model_size, device="cuda", compute_type="float16")
+
 piper_proc = subprocess.Popen(
     piper_cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, bufsize=0
 )
@@ -138,9 +92,54 @@ aplay_proc = subprocess.Popen(
     aplay_cmd, stdin=sox_proc.stdout, stderr=subprocess.DEVNULL, bufsize=0
 )
 
-print("󰗋 Diana is here! (Use 'Byebye Diana' to Diana get out)")
+print_queue = queue.Queue()
 
-exitkey = "byebye diana"
+
+def animationPrinter():
+    while True:
+        char = print_queue.get()
+
+        print(char, end="", flush=True)
+        # time.sleep(0.14)
+        time.sleep(0.04)
+
+        print_queue.task_done()
+
+
+threading.Thread(target=animationPrinter, daemon=True).start()
+
+
+def record_and_transcribe():
+    stream = p.open(
+        format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK
+    )
+    frames = []
+
+    while is_recording:
+        data = stream.read(CHUNK)
+        frames.append(data)
+
+    stream.stop_stream()
+    stream.close()
+
+    wf = wave.open("input.wav", "wb")
+    wf.setnchannels(CHANNELS)
+    wf.setsampwidth(p.get_sample_size(FORMAT))
+    wf.setframerate(RATE)
+    wf.writeframes(b"".join(frames))
+    wf.close()
+
+    segments, _ = model.transcribe("input.wav", beam_size=5, language="en")
+    return "".join([s.text for s in segments])
+
+
+# ========================================================================================================
+# DIANA START
+# ========================================================================================================
+print("󰗋 Diana is here! (Say 'Byebye Diana' to Diana get out)")
+print("Use caps_lock to Push-To-Talk")
+
+exitkey = ["bye-bye diana.", "bye bye diana", "bye diana"]
 system_message = {
     "role": "system",
     "content": """
@@ -160,11 +159,60 @@ Communication Protocol:
 5. KNOWLEDGE DEPTH: Don't give everything away. If they ask about a C bug, mention memory leaks or pointers and let them find the solution.
 """,
 }
+
+ollama_model = "llama3.2:1b"
 chatHistory = []
 
 
 terminators = (".", "!", "?", ":")
 forbidden = ["*", "_", "#", "`", ">"]
+
+while True:
+    if is_recording:
+        user_text = record_and_transcribe()
+        if not user_text.strip():
+            continue
+
+        if (
+            "bye" in user_text.lower() or "bye." in user_text.lower()
+        ) and "diana" in user_text.lower():
+            break
+        print(f"> {user_text}")
+
+        chatHistory.append({"role": "user", "content": user_text})
+
+        model_context = [system_message] + chatHistory[-8:]
+        stream = ollama.chat(model=ollama_model, messages=model_context, stream=True)
+
+        full_response = ""
+        buffer = ""
+
+        for chunck in stream:
+            text = chunck["message"]["content"]
+            full_response += text
+            for char in text:
+                print_queue.put(char)
+                if char in forbidden:
+                    continue
+                buffer += char
+                if char in terminators:
+                    piper_proc.stdin.write((buffer + "\n").encode("utf-8"))
+                    piper_proc.stdin.flush()
+                    buffer = ""
+
+        chatHistory.append({"role": "assistant", "content": full_response})
+        print_queue.join()
+        print()
+    else:
+        time.sleep(0.1)
+p.terminate()
+piper_proc.stdin.write(("Goodbye! See you next time. \n").encode("utf-8"))
+piper_proc.stdin.flush()
+print("󰗋 Diana went to do her daily Arch Rice and said GOODBYE!!")
+piper_proc.stdin.close()
+piper_proc.wait()
+
+
 """
 while True:
     userInput = input("> ")
