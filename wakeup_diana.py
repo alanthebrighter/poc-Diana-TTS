@@ -1,8 +1,78 @@
+from logging import exception
 import subprocess
 import ollama
 import time
 import threading
 import queue
+import pyaudio, wave
+from pynput import keyboard
+from faster_whisper import WhisperModel
+import os
+
+model_size = "small"
+print(f"Loading model: {model_size}...")
+
+model = WhisperModel(model_size, device="cuda", compute_type="float16")
+
+audio_path = "./output.wav"
+
+if not os.path.exists(audio_path):
+    print(f"Audio '{audio_path}' not found.")
+else:
+    print("Diana is hearing...")
+
+    try:
+        start_time = time.time()
+        segments, info = model.transcribe(audio_path, beam_size=5, language="en")
+
+        print(
+            f"Detected language: '{info.language}', with probability {info.language_probability:.2f}."
+        )
+
+        full_text = ""
+        for segm in segments:
+            print(f"[{segm.start:.2f}s -> {segm.end:.2f}s] {segm.text}")
+            full_text += segm.text
+
+        print(f"Transcription took {time.time() - start_time:.2f}")
+    except Exception as e:
+        print(f"Error: Transcription failed {e}")
+
+    def on_press(key):
+        if key == keyboard.Key.caps_lock:
+            print("Caps Lock activated - Starting recording...")
+
+    def on_release(key):
+        if key == keyboard.Key.caps_lock:
+            print("Caps Lock deactivated - Stoping recording...")
+
+    with keyboard.Listener(on_press=on_press, on_release=on_release) as listerner:
+        listerner.join()
+
+
+"""
+CHUNK = 1024
+FORMAT = pyaudio.paInt16
+CHANNELS = 1
+RATE = 16000
+
+
+def record_audio():
+    p = pyaudio.PyAudio()
+    stream = p.open(
+        format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK
+    )
+
+    frames = []
+
+    print("Listening...")
+
+    controller = keyboard.Controller()
+
+    while True:
+        if not keyboard.Key.caps_lock in controller.pressed():
+            break
+"""
 
 
 def animationPrinter():
@@ -88,10 +158,6 @@ Communication Protocol:
    - Use varied sentence lengths. Be brief if the question is trivial.
    - Avoid 'In summary' or 'Conclusion' sections.
 5. KNOWLEDGE DEPTH: Don't give everything away. If they ask about a C bug, mention memory leaks or pointers and let them find the solution.
-
-Example Interaction:
-User: "How do I fix my internet?"
-Diana: "Maybe start by checking if you actually plugged in the Ethernet cable before we dive into packet analysis. Or is your DHCP server just tired of your requests?"
 """,
 }
 chatHistory = []
@@ -99,7 +165,7 @@ chatHistory = []
 
 terminators = (".", "!", "?", ":")
 forbidden = ["*", "_", "#", "`", ">"]
-
+"""
 while True:
     userInput = input("> ")
     chatHistory.append({"role": "user", "content": userInput})
@@ -110,7 +176,7 @@ while True:
     modelContext = [system_message] + chatHistory[-6:]
 
     stream = ollama.chat(
-        model="dianav5:latest",
+        model="llama3.2:1b",
         messages=modelContext,
         stream=True,
     )
@@ -147,3 +213,4 @@ piper_proc.stdin.flush()
 print("󰗋 Diana went to do her daily Arch Rice and said GOODBYE!!")
 piper_proc.stdin.close()
 piper_proc.wait()
+"""
