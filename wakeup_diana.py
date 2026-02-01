@@ -5,9 +5,8 @@ import threading
 import queue
 import pyaudio
 import wave
-from pynput import keyboard
 from faster_whisper import WhisperModel
-# import os
+import os
 
 CHUNK = 1024
 FORMAT = pyaudio.paInt16
@@ -55,7 +54,7 @@ aplay_cmd = ["aplay", "-r", "22050", "-f", "S16_LE", "-t", "raw", "-c", "1"]
 
 audio_path = "./output.wav"
 
-
+"""
 is_recording = False
 
 
@@ -75,6 +74,7 @@ def on_release(key):
 
 listerner = keyboard.Listener(on_press=on_press, on_release=on_release)
 listerner.start()
+"""
 
 p = pyaudio.PyAudio()
 
@@ -115,9 +115,17 @@ def record_and_transcribe():
     )
     frames = []
 
-    while is_recording:
+    print("\nDiana is listening...")
+
+    while os.path.exists("/tmp/diana_rec"):
         data = stream.read(CHUNK)
         frames.append(data)
+
+    print("\nDiana is thinking...")
+
+    # while is_recording:
+    #    data = stream.read(CHUNK)
+    #    frames.append(data)
 
     stream.stop_stream()
     stream.close()
@@ -160,7 +168,7 @@ Communication Protocol:
 """,
 }
 
-ollama_model = "llama3.2:1b"
+ollama_model = "llama3.2:latest"
 chatHistory = []
 
 
@@ -168,7 +176,7 @@ terminators = (".", "!", "?", ":")
 forbidden = ["*", "_", "#", "`", ">"]
 
 while True:
-    if is_recording:
+    if os.path.exists("/tmp/diana_rec"):
         user_text = record_and_transcribe()
         if not user_text.strip():
             continue
