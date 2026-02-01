@@ -118,4 +118,4 @@ Low-latency local voice assistant with STT + LLM + streaming TTS.
 
 ## Demo
 
-<video src="./demo.mp4" controls loop muted width="900"></video>
+<video src="./demo.mp4" width="900"></video>
