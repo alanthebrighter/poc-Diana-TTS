@@ -18,8 +18,8 @@ volume_factor = "0.4"
 piper_cmd = [
     ".diana-tts/bin/piper",
     "--model",
-    # "voices/en_GB-cori-high.onnx",
-    "voices/en_US-hfc_female-medium.onnx",
+    "voices/en_GB-cori-high.onnx",
+    # "voices/en_US-hfc_female-medium.onnx",
     # "voices/en_US-kristin-medium.onnx",
     "--length_scale",
     "0.8",
@@ -53,28 +53,6 @@ sox_cmd = [
 aplay_cmd = ["aplay", "-r", "22050", "-f", "S16_LE", "-t", "raw", "-c", "1"]
 
 audio_path = "./output.wav"
-
-"""
-is_recording = False
-
-
-def on_press(key):
-    global is_recording
-    if key == keyboard.Key.caps_lock:
-        is_recording = True
-        print("\nDiana is listening...")
-
-
-def on_release(key):
-    global is_recording
-    if key == keyboard.Key.caps_lock:
-        is_recording = False
-        print("Diana is thinking...")
-
-
-listerner = keyboard.Listener(on_press=on_press, on_release=on_release)
-listerner.start()
-"""
 
 p = pyaudio.PyAudio()
 
@@ -123,10 +101,6 @@ def record_and_transcribe():
 
     print("\nDiana is thinking...")
 
-    # while is_recording:
-    #    data = stream.read(CHUNK)
-    #    frames.append(data)
-
     stream.stop_stream()
     stream.close()
 
@@ -168,7 +142,7 @@ Communication Protocol:
 """,
 }
 
-ollama_model = "llama3.2:latest"
+ollama_model = "qwen3:1.7b"
 chatHistory = []
 
 
@@ -219,54 +193,3 @@ piper_proc.stdin.flush()
 print("󰗋 Diana went to do her daily Arch Rice and said GOODBYE!!")
 piper_proc.stdin.close()
 piper_proc.wait()
-
-
-"""
-while True:
-    userInput = input("> ")
-    chatHistory.append({"role": "user", "content": userInput})
-
-    if userInput.lower() == exitkey:
-        break
-
-    modelContext = [system_message] + chatHistory[-6:]
-
-    stream = ollama.chat(
-        model="llama3.2:1b",
-        messages=modelContext,
-        stream=True,
-    )
-    fullRespose = ""
-    buffer = ""
-    for chunck in stream:
-        text_chunk = chunck["message"]["content"]
-        fullRespose += text_chunk
-        # print(text_chunk, end="", flush=True)
-        # print_queue.put(text_chunk)
-        for char in text_chunk:
-            print_queue.put(char)
-            if char in forbidden:
-                continue
-            buffer += char
-            if char in terminators:
-                if any(c.isalnum() for c in buffer):
-                    # print(buffer, flush=True)
-                    piper_proc.stdin.write((buffer + "\n").encode("utf-8"))
-                    piper_proc.stdin.flush()
-                buffer = ""
-
-    if any(c.isalnum() for c in buffer):
-        # print(buffer, flush=True)
-        piper_proc.stdin.write((buffer + "\n").encode("utf-8"))
-        piper_proc.stdin.flush()
-        buffer = ""
-    chatHistory.append({"role": "assistant", "content": fullRespose})
-    print_queue.join()
-    print()
-
-piper_proc.stdin.write(("Goodbye! See you next time. \n").encode("utf-8"))
-piper_proc.stdin.flush()
-print("󰗋 Diana went to do her daily Arch Rice and said GOODBYE!!")
-piper_proc.stdin.close()
-piper_proc.wait()
-"""
