@@ -117,5 +117,7 @@ Audio is triggered **sentence by sentence**, using punctuation terminators (`. !
 Low-latency local voice assistant with STT + LLM + streaming TTS.
 
 ## Demo
+<div align="center">
+https://github.com/user-attachments/assets/ac6af87a-68ef-4caa-9e29-4acb7f4051de
+</div>
 
-<video src="./demo.mp4" width="900"></video>
