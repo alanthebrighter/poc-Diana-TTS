@@ -1,7 +1,4 @@
 ---
-
-# `wakeup_diana.py` — Technical Summary
-
 ## Overview
 
 This script implements a **fully local voice assistant** named **Diana**, combining **Speech-to-Text (STT)**, a **local LLM**, **streaming Text-to-Speech (TTS)**, and **real-time audio I/O**.
