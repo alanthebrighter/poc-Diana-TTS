@@ -112,5 +112,10 @@ Audio is triggered **sentence by sentence**, using punctuation terminators (`. !
 * Persistent long-term memory via embeddings
 
 ---
+# Diana Voice Assistant
 
-![Demo](demo.mp4)
+Low-latency local voice assistant with STT + LLM + streaming TTS.
+
+## Demo
+
+<video src="./demo.mp4" controls loop muted width="900"></video>
